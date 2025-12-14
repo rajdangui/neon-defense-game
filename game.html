@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Defense: Balanced Edition</title>
+    <style>
+        :root {
+            --primary: #00f3ff;
+            --secondary: #bc13fe;
+            --danger: #ff0055;
+            --bg: #050510;
+            --panel: rgba(10, 10, 25, 0.95);
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: white;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 1000px;
+            height: 700px;
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.15);
+            border: 1px solid #333;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
+        }
+
+        /* --- UI ELEMENTS --- */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        .hidden { display: none !important; }
+
+        h1 { font-size: 50px; color: var(--primary); text-shadow: 0 0 20px var(--primary); margin: 0; letter-spacing: 4px; text-transform: uppercase;}
+        p { color: #aaa; margin-bottom: 30px; font-size: 18px; }
+        
+        button {
+            background: rgba(0, 243, 255, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 12px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: all 0.2s;
+            margin: 10px;
+            min-width: 180px;
+        }
+        button:hover { background: var(--primary); color: black; box-shadow: 0 0 25px var(--primary); transform: scale(1.05); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); transform: none; box-shadow: none; }
+        
+        /* HUD */
+        #top-bar {
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            height: 60px;
+            background: var(--panel);
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+            box-sizing: border-box;
+            z-index: 50;
+        }
+        .stat { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; color: #fff; }
+        .stat span { color: var(--primary); }
+
+        #wave-announcement {
+            position: absolute;
+            top: 80px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: var(--secondary);
+            text-shadow: 0 0 10px var(--secondary);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+
+        #shop-panel {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%;
+            height: 120px;
+            background: var(--panel);
+            border-top: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            box-sizing: border-box;
+            z-index: 50;
+        }
+
+        .plant-card {
+            width: 75px;
+            height: 95px;
+            border: 1px solid #444;
+            background: #111;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: 0.2s;
+        }
+        .plant-card:hover { border-color: white; background: #222; }
+        .plant-card.selected { border-color: var(--primary); background: #002222; box-shadow: 0 0 10px var(--primary); }
+        .plant-card.locked { opacity: 0.4; pointer-events: none; }
+        
+        /* Cooldown Overlay */
+        .cooldown-overlay {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            height: 0%; /* Animates up */
+            transition: height 0.1s linear;
+        }
+
+        .card-icon { font-size: 28px; margin-bottom: 5px; }
+        .card-cost { font-size: 12px; color: gold; font-weight: bold; }
+        .card-name { font-size: 10px; color: #aaa; text-transform: uppercase; margin-bottom: 2px;}
+
+        /* Start Wave Button */
+        #next-wave-btn {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            z-index: 60;
+            background: rgba(0, 255, 0, 0.1);
+            border-color: #0f0;
+            color: #0f0;
+            display: none; /* Hidden during wave */
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); box-shadow: 0 0 15px #0f0; } 100% { transform: scale(1); } }
+
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud" class="hidden">
+        <div id="top-bar">
+            <div style="display:flex; gap: 20px;">
+                <div class="stat">⚡ <span id="sun-display">150</span></div>
+                <div class="stat">❤️ <span id="hp-display">100</span></div>
+                <div class="stat">💀 <span id="enemies-display">0</span></div>
+            </div>
+            <div class="stat">WAVE <span id="wave-display">1</span></div>
+        </div>
+
+        <button id="next-wave-btn" onclick="startNextWave()">⚠️ START WAVE</button>
+        <div id="wave-announcement">WAVE CLEARED!</div>
+
+        <div id="shop-panel">
+            </div>
+    </div>
+
+    <div id="start-screen" class="overlay">
+        <h1>NEON DEFENSE</h1>
+        <p>Balanced Edition</p>
+        <button onclick="startGame()">START GAME</button>
+    </div>
+
+    <div id="gameover-screen" class="overlay hidden">
+        <h1 style="color: var(--danger);">SYSTEM FAILED</h1>
+        <p>The zombies breached the core.</p>
+        <p id="final-stats"></p>
+        <button onclick="startGame()">RETRY MISSION</button>
+    </div>
+    
+    <div id="win-screen" class="overlay hidden">
+        <h1>VICTORY</h1>
+        <p>All sectors secured.</p>
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+</div>
+
+<script>
+    /** * BALANCED GAME ENGINE
+     * Features: Wave State Management, Cooldowns, Fair Economy
+     */
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1000;
+    canvas.height = 700;
+
+    // --- CONFIG ---
+    const GRID_SIZE = 90;
+    const OFFSET_X = 50;
+    const OFFSET_Y = 100;
+    const COLS = 10;
+    const ROWS = 5;
+
+    // --- DATABASE ---
+    const PLANTS = [
+        { id: 0, name: "Solar", cost: 50, hp: 50, icon: "🌻", color: "#ffd700", cd: 500, type: "eco" },
+        { id: 1, name: "Pea", cost: 100, hp: 100, icon: "🔫", color: "#00f3ff", cd: 0, type: "shoot", dmg: 20, rate: 90 },
+        { id: 2, name: "Wall", cost: 50, hp: 600, icon: "🧱", color: "#cd7f32", cd: 1000, type: "wall" },
+        { id: 3, name: "Ice", cost: 175, hp: 100, icon: "❄️", color: "#aaddff", cd: 500, type: "shoot", dmg: 15, rate: 100, effect: "slow" },
+        { id: 4, name: "Mine", cost: 150, hp: 10, icon: "💣", color: "#ff0000", cd: 2000, type: "mine", dmg: 500 },
+        { id: 5, name: "Sniper", cost: 300, hp: 80, icon: "🔭", color: "#00ff00", cd: 2000, type: "shoot", dmg: 150, rate: 300 }, // Slow fire, high dmg
+        { id: 6, name: "Rapid", cost: 250, hp: 100, icon: "⚡", color: "#bc13fe", cd: 500, type: "shoot", dmg: 15, rate: 25 }, // Fast fire
+        { id: 7, name: "Plasma", cost: 450, hp: 150, icon: "⚛️", color: "#ffffff", cd: 3000, type: "shoot", dmg: 60, rate: 150, effect: "splash" }
+    ];
+
+    // Wave Design: [Count, Speed, HP, Interval]
+    const WAVES = [
+        { count: 8,  hp: 80,  speed: 0.4, interval: 400 }, // Tutorial
+        { count: 12, hp: 100, speed: 0.5, interval: 350 }, // Warmup
+        { count: 18, hp: 120, speed: 0.6, interval: 300 }, // Real start
+        { count: 25, hp: 150, speed: 0.7, interval: 200 }, // Swarm
+        { count: 5,  hp: 800, speed: 0.3, interval: 600 }, // Tanks
+        { count: 40, hp: 200, speed: 0.9, interval: 150 }, // Chaos
+        { count: 1,  hp: 5000, speed: 0.2, interval: 100 } // Final Boss
+    ];
+
+    // --- STATE ---
+    let game = {
+        sun: 200,
+        wave: 0,
+        hp: 100,
+        active: false,
+        waveInProgress: false,
+        enemiesToSpawn: 0,
+        spawnTimer: 0,
+        frame: 0
+    };
+
+    let entities = {
+        plants: [],
+        enemies: [],
+        projectiles: [],
+        particles: [],
+        texts: []
+    };
+
+    let selectedPlant = -1;
+    let plantCooldowns = new Array(PLANTS.length).fill(0); // Tracks timer for each card
+
+    // --- CLASSES ---
+
+    class Plant {
+        constructor(c, r, id) {
+            this.c = c; this.r = r;
+            this.x = OFFSET_X + c * GRID_SIZE;
+            this.y = OFFSET_Y + r * GRID_SIZE;
+            this.data = PLANTS[id];
+            this.hp = this.data.hp;
+            this.maxHp = this.data.hp;
+            this.timer = 0;
+        }
+
+        update() {
+            this.timer++;
+            // Economy
+            if (this.data.type === "eco" && this.timer % 350 === 0) {
+                game.sun += 25;
+                spawnText("+25", this.x + 40, this.y, "gold");
+            }
+            // Shooting
+            if (this.data.type === "shoot") {
+                if (this.timer % this.data.rate === 0 && this.hasTarget()) {
+                    entities.projectiles.push(new Projectile(this.x + 60, this.y + 45, this.r, this.data));
+                }
+            }
+        }
+
+        hasTarget() {
+            return entities.enemies.some(e => e.r === this.r && e.x > this.x);
+        }
+
+        draw() {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.data.color;
+            
+            // Base
+            ctx.fillStyle = "#111";
+            ctx.fillRect(this.x + 5, this.y + 5, GRID_SIZE-10, GRID_SIZE-10);
+            
+            // Icon
+            ctx.fillStyle = "white";
+            ctx.font = "35px Arial";
+            ctx.fillText(this.data.icon, this.x + 25, this.y + 55);
+            
+            // Health Bar
+            ctx.fillStyle = "red";
+            ctx.fillRect(this.x+10, this.y+75, 70, 4);
+            ctx.fillStyle = "#0f0";
+            ctx.fillRect(this.x+10, this.y+75, 70 * (this.hp / this.maxHp), 4);
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    class Enemy {
+        constructor(r, waveConfig) {
+            this.r = r;
+            this.x = canvas.width;
+            this.y = OFFSET_Y + r * GRID_SIZE;
+            this.hp = waveConfig.hp;
+            this.maxHp = waveConfig.hp;
+            this.speed = waveConfig.speed;
+            this.freeze = 0;
+            this.eating = false;
+        }
+
+        update() {
+            let spd = this.speed;
+            if (this.freeze > 0) { spd *= 0.5; this.freeze--; }
+            
+            if (!this.eating) this.x -= spd;
+
+            // Base Collision
+            if (this.x < 0) {
+                game.hp -= 10;
+                spawnParticles(this.x, this.y + 45, "red", 20);
+                return true; // delete
+            }
+
+            // Plant Collision
+            this.eating = false;
+            let col = Math.floor((this.x - OFFSET_X + 45) / GRID_SIZE);
+            let plant = entities.plants.find(p => p.c === col && p.r === this.r);
+            
+            if (plant) {
+                if (plant.data.type === "mine") {
+                    plant.hp = 0;
+                    this.takeDmg(plant.data.dmg);
+                    spawnParticles(plant.x+45, plant.y+45, "orange", 30);
+                } else {
+                    this.eating = true;
+                    plant.hp -= 0.5;
+                    if (plant.hp <= 0) this.eating = false;
+                }
+            }
+            return false;
+        }
+
+        takeDmg(amt) {
+            this.hp -= amt;
+            spawnText(amt, this.x, this.y, "#fff");
+        }
+
+        draw() {
+            ctx.fillStyle = this.freeze > 0 ? "#00ffff" : "#bc13fe";
+            if (this.maxHp > 500) ctx.fillStyle = "red"; // Boss color
+
+            let bounce = Math.sin(game.frame * 0.1) * 3;
+            ctx.fillRect(this.x + 15, this.y + 15 + bounce, 60, 60);
+            
+            // Face
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.arc(this.x+35, this.y+35+bounce, 5, 0, Math.PI*2);
+            ctx.arc(this.x+55, this.y+35+bounce, 5, 0, Math.PI*2);
+            ctx.fill();
+
+            // HP
+            ctx.fillStyle = "red";
+            ctx.fillRect(this.x + 15, this.y - 5 + bounce, 60, 4);
+            ctx.fillStyle = "#0f0";
+            ctx.fillRect(this.x + 15, this.y - 5 + bounce, 60 * (this.hp / this.maxHp), 4);
+        }
+    }
+
+    class Projectile {
+        constructor(x, y, r, data) {
+            this.x = x; this.y = y; this.r = r;
+            this.data = data;
+            this.speed = 10;
+            this.dead = false;
+        }
+
+        update() {
+            this.x += this.speed;
+            if (this.x > canvas.width) this.dead = true;
+
+            // Hit Logic
+            let target = entities.enemies.find(e => e.r === this.r && Math.abs(e.x - this.x) < 30);
+            if (target) {
+                this.dead = true;
+                if (this.data.effect === "splash") {
+                    entities.enemies.forEach(e => {
+                        if (Math.abs(e.x - target.x) < 150 && Math.abs(e.y - target.y) < 150) {
+                            e.takeDmg(this.data.dmg / 2);
+                        }
+                    });
+                    spawnParticles(this.x, this.y, "white", 10);
+                }
+                
+                target.takeDmg(this.data.dmg);
+                if (this.data.effect === "slow") target.freeze = 120;
+                spawnParticles(this.x, this.y, this.data.color, 5);
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = this.data.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 6, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    // --- SYSTEMS ---
+
+    function spawnText(txt, x, y, c) {
+        entities.texts.push({t: txt, x, y, c, life: 40});
+    }
+
+    function spawnParticles(x, y, c, n) {
+        for(let i=0; i<n; i++) {
+            entities.particles.push({
+                x, y, 
+                vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, 
+                c, life: 1.0
+            });
+        }
+    }
+
+    // --- UI & INPUT ---
+
+    function initShop() {
+        const p = document.getElementById('shop-panel');
+        p.innerHTML = '';
+        PLANTS.forEach((plant, i) => {
+            let d = document.createElement('div');
+            d.className = 'plant-card';
+            d.onclick = () => selectCard(i);
+            d.id = `card-${i}`;
+            d.innerHTML = `
+                <div class="card-icon">${plant.icon}</div>
+                <div class="card-name">${plant.name}</div>
+                <div class="card-cost">${plant.cost}</div>
+                <div class="cooldown-overlay" id="cd-${i}"></div>
+            `;
+            p.appendChild(d);
+        });
+    }
+
+    function selectCard(i) {
+        // Can't select if on cooldown or too expensive
+        if (plantCooldowns[i] > 0 || game.sun < PLANTS[i].cost) return;
+        
+        selectedPlant = i;
+        document.querySelectorAll('.plant-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById(`card-${i}`).classList.add('selected');
+    }
+
+    canvas.addEventListener('click', e => {
+        if (!game.active || selectedPlant === -1) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if (mx > OFFSET_X && mx < OFFSET_X + COLS*GRID_SIZE &&
+            my > OFFSET_Y && my < OFFSET_Y + ROWS*GRID_SIZE) {
+            
+            let c = Math.floor((mx - OFFSET_X) / GRID_SIZE);
+            let r = Math.floor((my - OFFSET_Y) / GRID_SIZE);
+
+            // Check if empty
+            if (!entities.plants.some(p => p.c === c && p.r === r)) {
+                let pData = PLANTS[selectedPlant];
+                if (game.sun >= pData.cost) {
+                    // Place Plant
+                    entities.plants.push(new Plant(c, r, selectedPlant));
+                    game.sun -= pData.cost;
+                    
+                    // Set Cooldown
+                    plantCooldowns[selectedPlant] = pData.cd / 16; // approx frames
+                    
+                    selectedPlant = -1;
+                    document.querySelectorAll('.plant-card').forEach(el => el.classList.remove('selected'));
+                }
+            }
+        }
+    });
+
+    // --- GAME LOOP ---
+
+    function startGame() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('gameover-screen').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+        
+        // Reset
+        game = { sun: 200, wave: 0, hp: 100, active: true, waveInProgress: false, enemiesToSpawn: 0, spawnTimer: 0, frame: 0 };
+        entities = { plants: [], enemies: [], projectiles: [], particles: [], texts: [] };
+        plantCooldowns.fill(0);
+        
+        initShop();
+        showNextWaveBtn();
+        loop();
+    }
+
+    function startNextWave() {
+        if (game.wave >= WAVES.length) {
+            document.getElementById('win-screen').classList.remove('hidden');
+            game.active = false;
+            return;
+        }
+
+        document.getElementById('next-wave-btn').style.display = 'none';
+        
+        let w = WAVES[game.wave];
+        game.enemiesToSpawn = w.count;
+        game.waveInProgress = true;
+        game.wave++;
+        
+        // Announcement
+        let ann = document.getElementById('wave-announcement');
+        ann.innerText = "WAVE " + game.wave + " INCOMING";
+        ann.style.opacity = 1;
+        setTimeout(() => ann.style.opacity = 0, 2000);
+    }
+
+    function showNextWaveBtn() {
+        const btn = document.getElementById('next-wave-btn');
+        btn.style.display = 'block';
+        btn.innerText = game.wave === 0 ? "START GAME" : "START NEXT WAVE";
+    }
+
+    function loop() {
+        if (!game.active) return;
+        game.frame++;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. WAVE LOGIC
+        if (game.waveInProgress) {
+            let wConfig = WAVES[game.wave - 1];
+            
+            // Spawning
+            if (game.enemiesToSpawn > 0) {
+                game.spawnTimer++;
+                if (game.spawnTimer > wConfig.interval) {
+                    let r = Math.floor(Math.random() * ROWS);
+                    entities.enemies.push(new Enemy(r, wConfig));
+                    game.enemiesToSpawn--;
+                    game.spawnTimer = 0;
+                }
+            } else if (entities.enemies.length === 0) {
+                // WAVE CLEAR
+                game.waveInProgress = false;
+                game.sun += 100; // Wave Clear Bonus
+                spawnText("WAVE COMPLETE! +100 SUN", canvas.width/2 - 100, canvas.height/2, "#0f0");
+                showNextWaveBtn();
+            }
+        }
+
+        // 2. UPDATES
+        // Plants
+        entities.plants = entities.plants.filter(p => p.hp > 0);
+        entities.plants.forEach(p => p.update());
+        
+        // Enemies
+        entities.enemies.forEach((e, i) => {
+            let del = e.update();
+            if (del) entities.enemies.splice(i, 1);
+        });
+        entities.enemies = entities.enemies.filter(e => e.hp > 0);
+
+        // Projectiles
+        entities.projectiles.forEach(p => p.update());
+        entities.projectiles = entities.projectiles.filter(p => !p.dead);
+
+        // 3. DRAWING
+        // Grid
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 2;
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                ctx.strokeRect(OFFSET_X+c*GRID_SIZE, OFFSET_Y+r*GRID_SIZE, GRID_SIZE, GRID_SIZE);
+            }
+        }
+
+        entities.plants.forEach(p => p.draw());
+        entities.enemies.forEach(e => e.draw());
+        entities.projectiles.forEach(p => p.draw());
+
+        // Particles & Text
+        entities.particles.forEach((p, i) => {
+            p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+            ctx.fillStyle = p.c; ctx.globalAlpha = p.life;
+            ctx.fillRect(p.x, p.y, 4, 4);
+            if(p.life<=0) entities.particles.splice(i,1);
+        });
+        ctx.globalAlpha = 1;
+
+        entities.texts.forEach((t, i) => {
+            t.y -= 0.5; t.life--;
+            ctx.fillStyle = t.c; ctx.font = "20px Arial"; ctx.fillText(t.t, t.x, t.y);
+            if(t.life<=0) entities.texts.splice(i,1);
+        });
+
+        // 4. UI UPDATES
+        document.getElementById('sun-display').innerText = Math.floor(game.sun);
+        document.getElementById('hp-display').innerText = game.hp;
+        document.getElementById('enemies-display').innerText = entities.enemies.length + game.enemiesToSpawn;
+        document.getElementById('wave-display').innerText = game.wave;
+
+        // Card Visuals (Cooldowns & Cost)
+        PLANTS.forEach((p, i) => {
+            let card = document.getElementById(`card-${i}`);
+            let overlay = document.getElementById(`cd-${i}`);
+            
+            // Handle Cooldown Timer
+            if (plantCooldowns[i] > 0) {
+                plantCooldowns[i]--;
+                let percent = (plantCooldowns[i] / (p.cd/16)) * 100;
+                overlay.style.height = percent + "%";
+                card.classList.add('locked');
+            } else {
+                overlay.style.height = "0%";
+                // Check Cost
+                if (game.sun < p.cost) card.classList.add('locked');
+                else card.classList.remove('locked');
+            }
+        });
+
+        // Game Over
+        if (game.hp <= 0) {
+            game.active = false;
+            document.getElementById('gameover-screen').classList.remove('hidden');
+            document.getElementById('final-stats').innerText = "You survived " + (game.wave - 1) + " waves.";
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+</script>
+</body>
+</html>
