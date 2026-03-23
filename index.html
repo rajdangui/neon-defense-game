@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Defense</title>
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+
+<div id="game-wrapper">
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="top-bar">
+      <div style="display:flex; gap: 20px;">
+        <div class="stat">⚡ <span id="sun-display">200</span></div>
+        <div class="stat">❤️ <span id="hp-display">100</span></div>
+        <div class="stat">💀 <span id="enemies-display">0</span></div>
+      </div>
+      <div class="stat">WAVE <span id="wave-display">0</span></div>
+    </div>
+
+    <button id="next-wave-btn" onclick="startNextWave()">⚠️ START WAVE</button>
+    <div id="wave-announcement"></div>
+
+    <div id="shop-panel"></div>
+  </div>
+
+  <div id="start-screen" class="overlay">
+    <h1>NEON DEFENSE</h1>
+    <p>Balanced Edition</p>
+    <button onclick="startGame()">START GAME</button>
+  </div>
+
+  <div id="gameover-screen" class="overlay hidden">
+    <h1 class="danger">SYSTEM FAILED</h1>
+    <p>The enemies breached the core.</p>
+    <p id="final-stats"></p>
+    <button onclick="startGame()">RETRY MISSION</button>
+  </div>
+
+  <div id="win-screen" class="overlay hidden">
+    <h1>VICTORY</h1>
+    <p>All sectors secured.</p>
+    <button onclick="location.reload()">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

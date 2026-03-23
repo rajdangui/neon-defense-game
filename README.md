@@ -1,94 +1,101 @@
-# Neon Defense Game
+# Neon Defense
 
-A fast-paced **3D tower defense game built with React, Three.js, and TypeScript**.
-Players must strategically place towers, manage resources, and defend their base against waves of enemies in a neon-styled battlefield.
+A fast-paced **2D tower defense game** built with **vanilla JavaScript** and the **Canvas 2D API**.
+Place towers, manage resources, and defend your base against seven escalating waves of neon enemies.
+
+> 🎮 **[Play it live on GitHub Pages](https://rajdangui.github.io/neon-defense-game/)**
 
 ---
 
 ## 🎮 Gameplay
 
-Neon Defense is a strategy-based tower defense game where players must stop incoming enemy waves by placing different types of defensive towers.
-
-Each tower has unique abilities and strengths. Players must balance their economy, choose the right tower combinations, and upgrade defenses to survive increasingly difficult waves.
+Stop incoming enemy waves by placing defensive towers on the grid.
+Balance your economy, choose the right tower combinations, and survive increasingly difficult waves.
 
 ### Core Gameplay Loop
 
-1. Enemies spawn in waves.
-2. Players place towers on the map.
-3. Towers automatically attack enemies.
-4. Destroyed enemies reward the player with currency.
-5. Players upgrade or build new towers to survive stronger waves.
+1. Enemies spawn in waves from the right side of the screen.
+2. Click a tower card in the shop to select it, then click a grid cell to place it.
+3. Towers automatically attack enemies in their row.
+4. Destroyed enemies and wave clears reward currency.
+5. Survive all **7 waves** to win — including the final boss!
 
 ---
 
 ## ✨ Features
 
-* ⚡ Real-time tower defense gameplay
-* 🧠 Strategic tower placement system
-* 💥 Multiple tower types with unique abilities
-* 🌊 Progressive enemy wave system
-* 💰 Economy system with tower upgrades and selling
-* 🎨 Neon-styled 3D environment
-* 🖥 Interactive UI and in-game HUD
+* ⚡ Real-time tower defense gameplay at 60 FPS
+* 🧠 8 unique tower types with distinct abilities
+* 🌊 7 progressive enemy waves with a final boss
+* 💰 Economy system — earn currency to place more towers
+* ❄️ Status effects — ice towers slow enemies
+* 💥 Area-of-effect splash damage (Plasma tower)
+* 💣 One-shot mine traps
+* 🎨 Neon-styled glow effects and particle system
 
 ---
 
 ## 🗼 Tower Types
 
-| Tower            | Ability                          |
-| ---------------- | -------------------------------- |
-| Pulse Cannon     | Balanced damage and attack speed |
-| Flux Emitter     | Fast attack speed                |
-| Phase Driver     | Long-range sniper tower          |
-| Cryo Projector   | Slows down enemies               |
-| Missile Launcher | Area damage to multiple enemies  |
+| Tower  | Cost | HP  | Ability                                |
+| ------ | ---- | --- | -------------------------------------- |
+| 🌻 Solar  | 50   | 50  | Generates +25 currency every ~6 s      |
+| 🔫 Pea    | 100  | 100 | Balanced damage and attack speed       |
+| 🧱 Wall   | 50   | 600 | High-HP blocker — no attack            |
+| ❄️ Ice    | 175  | 100 | Slows enemies on hit                   |
+| 💣 Mine   | 150  | 10  | One-shot explosion (500 dmg)           |
+| 🔭 Sniper | 300  | 80  | High single-target damage, slow fire   |
+| ⚡ Rapid  | 250  | 100 | Very fast fire rate, lower per-shot dmg |
+| ⚛️ Plasma | 450  | 150 | Splash damage hitting nearby enemies   |
 
 ---
 
 ## 🛠 Tech Stack
 
-**Frontend**
-
-* React
-* TypeScript
-* Vite
-
-**3D Rendering**
-
-* Three.js
-* @react-three/fiber
-
-**Styling**
-
-* Tailwind CSS
-
-**Development Tools**
-
-* ESLint
-* Prettier
+| Layer            | Technology                    |
+| ---------------- | ----------------------------- |
+| Language         | Vanilla JavaScript (ES2022 modules) |
+| Rendering        | Canvas 2D API                 |
+| Build system     | [Vite](https://vitejs.dev/)   |
+| Linting          | [ESLint](https://eslint.org/) |
+| Testing          | [Vitest](https://vitest.dev/) |
+| CI / CD          | GitHub Actions                |
+| Hosting          | GitHub Pages                  |
 
 ---
 
 ## 📂 Project Structure
 
 ```
-src
- ├── components
- │    ├── UI.tsx
- │
- ├── game
- │    ├── GameCanvas.tsx
- │    ├── GameState.tsx
- │
- ├── constants.ts
- ├── types.ts
+neon-defense-game/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml          # Lint → Test → Build on every push / PR
+│       └── deploy.yml      # Deploy to GitHub Pages on push to main
+├── src/
+│   ├── __tests__/
+│   │   ├── constants.test.js
+│   │   └── data.test.js
+│   ├── constants.js        # Numeric game constants
+│   ├── data.js             # PLANTS and WAVES definitions
+│   ├── state.js            # Mutable game state
+│   ├── canvas.js           # Canvas / ctx singleton
+│   ├── particles.js        # Particle & floating-text system
+│   ├── Plant.js            # Plant class
+│   ├── Enemy.js            # Enemy class
+│   ├── Projectile.js       # Projectile class
+│   ├── ui.js               # Shop, HUD, input handler
+│   ├── game.js             # Game loop & wave management
+│   ├── main.js             # Entry point
+│   └── style.css           # All styles
+├── index.html              # HTML entry point
+├── vite.config.js
+├── vitest.config.js
+├── eslint.config.js
+├── .prettierrc.json
+├── .gitignore
+└── package.json
 ```
-
-**Key Files**
-
-* `GameCanvas.tsx` → Main 3D rendering and game scene
-* `GameState.tsx` → Global game state and logic
-* `UI.tsx` → Game HUD and interface
 
 ---
 
@@ -98,30 +105,31 @@ src
 
 ```bash
 git clone https://github.com/rajdangui/neon-defense-game.git
-```
-
-### 2. Navigate into the project
-
-```bash
 cd neon-defense-game
 ```
 
-### 3. Install dependencies
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 4. Run the development server
+### 3. Run the development server
 
 ```bash
 npm run dev
 ```
 
-The game will run locally at:
+Open [http://localhost:5173/neon-defense-game/](http://localhost:5173/neon-defense-game/) in your browser.
 
-```
-http://localhost:5173
+---
+
+## 🧪 Testing & Linting
+
+```bash
+npm test          # Run unit tests (Vitest)
+npm run lint      # Lint source files (ESLint)
+npm run lint:fix  # Auto-fix lint issues
 ```
 
 ---
@@ -129,25 +137,20 @@ http://localhost:5173
 ## 📦 Build for Production
 
 ```bash
-npm run build
-```
-
-Preview the build:
-
-```bash
-npm run preview
+npm run build     # Outputs to dist/
+npm run preview   # Preview the production build locally
 ```
 
 ---
 
 ## 🎯 Future Improvements
 
-* Additional maps and environments
-* Boss enemy waves
-* Tower upgrade system expansion
-* Leaderboards
-* Player progression system
-* Multiplayer / co-op mode
+* Tower selling / refunding
+* Pause button and settings screen
+* Sound effects and background music
+* Mobile-responsive layout
+* Leaderboard / high-score system
+* Additional maps and enemy types
 
 ---
 
@@ -155,11 +158,8 @@ npm run preview
 
 **Raj Dangui**
 
-GitHub:
-https://github.com/rajdangui
-
-LinkedIn:
-https://www.linkedin.com/in/rajdangui
+* GitHub: <https://github.com/rajdangui>
+* LinkedIn: <https://www.linkedin.com/in/rajdangui>
 
 ---
 
@@ -167,4 +167,3 @@ https://www.linkedin.com/in/rajdangui
 
 This project is open source and available under the **MIT License**.
 
----
