@@ -17,7 +17,7 @@ Each tower has unique abilities and strengths. Players must balance their econom
 2. Players place towers on the map.
 3. Towers automatically attack enemies.
 4. Destroyed enemies reward the player with currency.
-5. Players upgrade or build new towers to survive stronger waves.
+5. Players upgrade or build new towers to survive stronger waves and more.
 
 ---
 
